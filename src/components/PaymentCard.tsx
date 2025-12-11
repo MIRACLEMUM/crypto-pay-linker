@@ -1,58 +1,75 @@
 import { useState, useEffect } from 'react';
 import { useAccount, useSendTransaction, useWaitForTransactionReceipt } from 'wagmi';
-import { parseEther, formatEther } from 'viem';
+import { parseEther } from 'viem';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { Wallet, ArrowRight, Loader2, Check, AlertCircle, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PaymentLink } from '@/types/payment';
 import { markPaymentAsPaid } from '@/lib/storage';
 import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
 
 interface PaymentCardProps {
   payment: PaymentLink;
   onPaymentComplete?: () => void;
+  network?: 'mainnet' | 'sepolia' | string; // optional, defaults to sepolia
 }
 
-export function PaymentCard({ payment, onPaymentComplete }: PaymentCardProps) {
+export function PaymentCard({ payment, onPaymentComplete, network = 'sepolia' }: PaymentCardProps) {
   const { address, isConnected } = useAccount();
   const [isPaid, setIsPaid] = useState(payment.paid);
 
   const { data: hash, isPending, sendTransaction, error: sendError } = useSendTransaction();
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
 
+  // Utility: Shorten address
+  const shortenAddress = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+
+  // Utility: Generate Etherscan link
+  const getEtherscanLink = (txHash: string) => `https://${network}.etherscan.io/tx/${txHash}`;
+
+  // Effect: Payment confirmation
   useEffect(() => {
     if (isConfirmed && hash && address) {
-      markPaymentAsPaid(payment.id, address, hash);
-      setIsPaid(true);
+      const updated = markPaymentAsPaid(payment.id, address, hash);
+      if (updated) setIsPaid(true);
+
       toast.success('Payment completed successfully!');
       onPaymentComplete?.();
     }
   }, [isConfirmed, hash, address, payment.id, onPaymentComplete]);
 
+  // Effect: Transaction error
   useEffect(() => {
     if (sendError) {
       toast.error(sendError.message || 'Transaction failed');
     }
   }, [sendError]);
 
+  // Handle payment
   const handlePay = () => {
-    if (!isConnected) return;
-    
-    // For USD amounts, we'd need to convert to ETH using an oracle
-    // For now, we'll just use the amount as ETH
-    const ethAmount = payment.currency === 'ETH' 
-      ? payment.amount 
-      : payment.amount; // In production, convert USD to ETH
+    if (!isConnected) {
+      toast.error('Connect your wallet first');
+      return;
+    }
+
+    if (!payment.recipient || !/^0x[a-fA-F0-9]{40}$/.test(payment.recipient)) {
+      toast.error('Invalid recipient address');
+      return;
+    }
+
+    let ethAmount: string;
+    try {
+      ethAmount = parseEther(payment.amount.toString()).toString();
+    } catch {
+      toast.error('Invalid amount');
+      return;
+    }
 
     sendTransaction({
-      to: payment.recipient as `0x${string}`,
-      value: parseEther(ethAmount),
+      to: payment.recipient,
+      value: parseEther(payment.amount.toString()),
     });
   };
-
-  const shortenAddress = (addr: string) => 
-    `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 
   if (isPaid) {
     return (
@@ -66,7 +83,7 @@ export function PaymentCard({ payment, onPaymentComplete }: PaymentCardProps) {
         </p>
         {payment.txHash && (
           <a
-            href={`https://etherscan.io/tx/${payment.txHash}`}
+            href={getEtherscanLink(payment.txHash)}
             target="_blank"
             rel="noopener noreferrer"
             className="text-sm text-primary hover:underline"
@@ -93,7 +110,6 @@ export function PaymentCard({ payment, onPaymentComplete }: PaymentCardProps) {
 
       {/* Payment Details */}
       <div className="space-y-4 mb-8">
-        {/* Amount */}
         <div className="p-4 rounded-xl bg-secondary/50 border border-border text-center">
           <p className="text-sm text-muted-foreground mb-1">Amount</p>
           <p className="text-4xl font-bold gradient-text">
@@ -101,13 +117,11 @@ export function PaymentCard({ payment, onPaymentComplete }: PaymentCardProps) {
           </p>
         </div>
 
-        {/* Recipient */}
         <div className="p-4 rounded-xl bg-secondary/50 border border-border">
           <p className="text-sm text-muted-foreground mb-1">Recipient</p>
-          <p className="font-mono text-sm break-all">{payment.recipient}</p>
+          <p className="font-mono text-sm break-all">{shortenAddress(payment.recipient)}</p>
         </div>
 
-        {/* Message */}
         {payment.message && (
           <div className="p-4 rounded-xl bg-secondary/50 border border-border">
             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">

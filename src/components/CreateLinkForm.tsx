@@ -40,7 +40,8 @@ export function CreateLinkForm() {
     setIsCreating(true);
     
     try {
-      const link = createPaymentLink(
+      // ✅ Await here so TypeScript knows link has type PaymentLink
+      const link = await createPaymentLink(
         { recipient, amount, currency, message: message || undefined },
         address
       );

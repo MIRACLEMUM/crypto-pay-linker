@@ -15,9 +15,16 @@ export function Dashboard() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
-    const allLinks = getPaymentLinks();
-    // Show all links for now, or filter by creator if connected
-    setLinks(allLinks.reverse()); // Most recent first
+    const fetchLinks = async () => {
+      try {
+        const allLinks = await getPaymentLinks(); // ✅ await the promise
+        setLinks(allLinks.reverse()); // Most recent first
+      } catch (error) {
+        console.error('Failed to fetch links', error);
+      }
+    };
+
+    fetchLinks();
   }, []);
 
   const handleCopy = async (id: string) => {

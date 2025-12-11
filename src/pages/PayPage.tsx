@@ -4,7 +4,7 @@ import { Navbar } from '@/components/Navbar';
 import { PaymentCard } from '@/components/PaymentCard';
 import { Footer } from '@/components/Footer';
 import { PaymentLink } from '@/types/payment';
-import { getPaymentLinkById } from '@/lib/storage';
+import { supabase } from '@/lib/supabase';
 import { AlertCircle, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -14,18 +14,36 @@ const PayPage = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (id) {
-      const link = getPaymentLinkById(id);
-      setPayment(link);
+    async function fetchPayment() {
+      if (!id) return;
+
+      const { data, error } = await supabase
+        .from('payment_links')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) {
+        console.error("Error fetching payment:", error);
+      }
+
+      setPayment(data);
+      setLoading(false);
     }
-    setLoading(false);
+
+    fetchPayment();
   }, [id]);
 
-  const handlePaymentComplete = () => {
-    if (id) {
-      const updatedLink = getPaymentLinkById(id);
-      setPayment(updatedLink);
-    }
+  const handlePaymentComplete = async () => {
+    if (!id) return;
+
+    const { data } = await supabase
+      .from('payment_links')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    setPayment(data);
   };
 
   if (loading) {
