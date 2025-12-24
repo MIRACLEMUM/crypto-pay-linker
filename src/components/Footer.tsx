@@ -21,7 +21,7 @@ export function Footer() {
             </p>
             <div className="flex items-center gap-3">
               <a
-                href="https://twitter.com"
+                href="https://x.com/TechGoddess0"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex h-9 w-9 items-center justify-center rounded-lg bg-secondary hover:bg-secondary/80 transition-colors"
@@ -30,7 +30,7 @@ export function Footer() {
                 <Twitter className="h-4 w-4 text-muted-foreground" />
               </a>
               <a
-                href="https://github.com"
+                href="https://github.com/MIRACLEMUM"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex h-9 w-9 items-center justify-center rounded-lg bg-secondary hover:bg-secondary/80 transition-colors"
